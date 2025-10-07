@@ -17,6 +17,7 @@ C_ST = {
     0: Day_rate[0] * days + Mobilization_rate[0],  # Cost per month for short-term chartering of Crew Transfer Vessel
     1: Day_rate[1] * days + Mobilization_rate[1],  # Cost per month for short-term chartering of Service Operation Vessel
 }
+
 C_LT = {
     0: Day_rate[0] * days * months + Mobilization_rate[0],  # Cost for long-term chartering of Crew Transfer Vessel
     1: Day_rate[1] * days * months + Mobilization_rate[1],  # Cost for long-term chartering of Service Operation Vessel
