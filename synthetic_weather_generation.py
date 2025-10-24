@@ -32,7 +32,7 @@ plt.rcParams.update({
     "patch.linewidth": 0.5}) 
 
 # Load data
-weather_data = pd.read_csv("Weather Data/Wind Farm 1.csv", sep=",")
+weather_data = pd.read_csv("Weather Data/Location 1.csv", sep=",")
 
 # Convert Time column to datetime
 weather_data['Time'] = pd.to_datetime(weather_data['Time'])
