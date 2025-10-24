@@ -12,7 +12,7 @@ def gen_weather_seasonal(
     days: List[int],
     hours_per_day: int = 24,
     # base (årlig) nivå
-    mu_wind_base: float = 16.0,
+    mu_wind_base: float = 14.0,
     sigma_wind_base: float = 2,
     wave_alpha_base: float = 0.07,
     # AR(1) glatthet
@@ -21,7 +21,7 @@ def gen_weather_seasonal(
     sigma_wave: float = 0.1,
     wave_lag: int = 2,
     # sesong-amplituder (andel av basis)
-    mu_wind_season_amp: float = 0.45,     # ±25% rundt base
+    mu_wind_season_amp: float = 0.20,     # ±25% rundt base
     wave_alpha_season_amp: float = 0.02,  # ±25% rundt base
     # når er "vintertopp"? (0=dag1; 182≈midtår gir januar-topp hvis start DOY≈Jul)
     winter_peak_day: int = 0, 
