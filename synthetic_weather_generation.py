@@ -113,6 +113,10 @@ sim_weather = pd.DataFrame(index=idx).reset_index()
 sim_weather["Sim_speed"] = sim_wind
 sim_weather["Sim_height"] = sim_wave
 
+#make repeating dayID for every scenario
+sim_weather["DayID"] = D * sim_weather["Month"] + sim_weather["Day"] - D
+
+
 sim_weather = sim_weather.merge(monthly_stats, on='Month', how='left')
 
 # De-standardize series
@@ -131,11 +135,11 @@ sim_weather["Sim_height"] = sim_weather["Sim_height"].interpolate(method='linear
 # Clean and save data
 ######################
 
-sim_weather = sim_weather[["Scenario", "Hour", "Day", "Month", "Sim_speed", "Sim_height"]]
-sim_weather = sim_weather.rename(columns={'Sim_height': "Height", 'Sim_speed': "Speed"})
+sim_weather = sim_weather[["Scenario", "Hour", "DayID", "Month", "Sim_speed", "Sim_height"]]
+sim_weather = sim_weather.rename(columns={'Sim_height': "Height", 'Sim_speed': "Speed", "DayID": "Day"})
 
 # save raw hourly weather data to results folder
-sim_weather.to_csv("Synthetic Weather Data/Wind Farm 1 hourly_synthetic.csv", sep = ";", index = False) # save full synthetic weather data
+sim_weather.to_csv("Synthetic Weather Data/Wind Farm 1 hourly_synthetic.csv", sep = ",", index = False) # save full synthetic weather data
 
 #######################
 # Calculate statistics 
@@ -147,9 +151,9 @@ observed_monthly_mean = weather_data.groupby(["Month"]).mean()
 sim_monthly_std = sim_weather.groupby(["Month"]).std()
 observed_monthly_std = weather_data.groupby(["Month"]).std()
 
-############
-# # Plot original time series
-# ###########################
+############################
+# Plot original time series
+############################
 
 weather_data = weather_data.sort_values(by = "Time")
 
@@ -165,13 +169,13 @@ ax2.set_title("Significant Wave Height, FINO1")
 ax1.tick_params(direction = "in", which = "major", right = True, top = True)
 ax2.tick_params(direction = "in", which = "major", right = True, top = True)
 plt.tight_layout()
-plt.savefig("Wind Farm 1 Observed_data.pdf", dpi = 600, bbox_inches = "tight")
+plt.savefig("Synthetic Weather Data/Wind Farm 1 Observed_data.pdf", dpi = 600, bbox_inches = "tight")
 
 
 ###########################
 # Plot synthetic time series
 ###########################
-sim_weather = pd.read_csv("Synthetic Weather Data/Wind Farm 1 hourly_synthetic.csv", sep =";")
+sim_weather = pd.read_csv("Synthetic Weather Data/Wind Farm 1 hourly_synthetic.csv", sep =",")
 scenario_to_plot = 2  # tilsvarer "Sample"/år i din gamle kode
 dfp = (
     sim_weather
@@ -208,7 +212,7 @@ ax2.set_xticklabels(month_labels, rotation=0)
 ax2.set_xlabel("Progressive hour (M/D/H order)")
 
 plt.tight_layout()
-plt.savefig("Simulated_weather.pdf", dpi=600, bbox_inches="tight")
+plt.savefig("Synthetic Weather Data/Wind Farm 1 Simulated_weather.pdf", dpi=600, bbox_inches="tight")
 
 # ###############################
 # # Plot empirical distributions

@@ -29,7 +29,7 @@ def weather_windows(S):
     A = {}
 
     for w in W:
-        data = pd.read_csv(f"Synthetic Weather Data/scenario_example.csv")
+        data = pd.read_csv(f"Synthetic Weather Data/Wind Farm 1 hourly_synthetic.csv")
         data = data[data["Scenario"].isin(S)]
         for s, scenario_data in data.groupby("Scenario"):
             for d, daily_data in scenario_data.groupby("Day"):
@@ -49,6 +49,18 @@ Limits = {
     "CTV": {"Speed": 10, "Height": 2, "Shift Length": 12},
     "SOV": {"Speed": 12, "Height": 2.5, "Shift Length": 16}
 }
-print(weather_windows([1]))
 
+A = weather_windows([1])
 
+# plot A for verification
+import matplotlib.pyplot as plt
+for v in V:
+    for w in W:
+        days = sorted(set(d for (_, ww, d, _) in A.keys() if ww == w))
+        values = [A[(v, w, d, 1)] for d in days]
+        plt.plot(days, values, label=f"{v} at {w}")
+plt.xlabel("Day")
+plt.ylabel("Max Operable Window (hours)")
+plt.title("Max Operable Weather Windows")
+plt.legend()
+plt.show()
