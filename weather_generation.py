@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 from statsmodels.tsa.vector_ar.var_model import VAR
 
-import conf
+import weather_config as weather_conf
 
 INPUT_FOLDER = "Weather Data"
 OUTPUT_FOLDER = "Synthetic Weather Data"
@@ -50,49 +50,48 @@ for file in files:
     # Simulate VAR
     ##############
 
-    H, D, M, nS = conf.HOURS, conf.DAYS, conf.MONTHS, conf.SCENARIOS
-    seed = conf.SEED
-    num_to_simulate = H * D * M 
-
-    all_scenarios = []
+    H, D, M, nS = weather_conf.HOURS, weather_conf.DAYS, weather_conf.MONTHS, weather_conf.SCENARIOS
+    seed = weather_conf.SEED
+    num_to_simulate = H * D * M * nS
 
     # Simulate one year of syntethic data in isolation.
-    for s in range(1, nS + 1):
-        sim = results.simulate_var(steps=num_to_simulate, seed=seed)    
 
-        # Build the simulated data which will be concatenated
-        idx = pd.MultiIndex.from_product(
-            [[s], range(1, M + 1), range(1, D + 1), range(0, H)],
-                names=["Scenario", "Month", "Day", "Hour"]
-            )
+    sim = results.simulate_var(steps=num_to_simulate, seed=seed)    
+    sim_speed = sim[:, 0]
+    sim_height = sim[:, 1]
+
+    # Build the simulated data which will be concatenated
+    idx = pd.MultiIndex.from_product(
+        [range(1, nS +1), range(1, M + 1), range(1, D + 1), range(0, H)],
+            names=["Scenario", "Month", "Day", "Hour"]
+    )
         
-        sd = pd.DataFrame(index=idx).reset_index()
-        sd = sd[["Scenario", "Hour", "Day", "Month"]] # Change order of columns
-        sd["Speed_standardized"] = sim[:, 0]
-        sd["Height_standardized"] = sim[:, 1]
-        sd = sd.merge(monthly_stats, on='Month', how='left')
+    sd = pd.DataFrame(index=idx).reset_index()
+    sd = sd[["Scenario", "Hour", "Day", "Month"]] # Change order of columns
+    sd["Speed_standardized"] = sim_speed
+    sd["Height_standardized"] = sim_height
+    sd["DayID"] = D * sd["Month"] + sd["Day"] - D
+    sd = sd.merge(monthly_stats, on='Month', how='left')
         
-        # De-standardize data
-        sd["Speed_boxcox"] = sd["Speed_standardized"] * sd["Speed_boxcox_std"] + sd["Speed_boxcox_mean"]
-        sd["Height_boxcox"] = sd["Height_standardized"] * sd["Height_boxcox_std"] + sd["Height_boxcox_mean"]
+    # De-standardize data
+    sd["Speed_boxcox"] = sd["Speed_standardized"] * sd["Speed_boxcox_std"] + sd["Speed_boxcox_mean"]
+    sd["Height_boxcox"] = sd["Height_standardized"] * sd["Height_boxcox_std"] + sd["Height_boxcox_mean"]
 
-        # Inverse box-cox transformation
-        sd["Speed"] = scipy.special.inv_boxcox(sd["Speed_boxcox"], speed_lambda)
-        sd["Height"] = scipy.special.inv_boxcox(sd["Height_boxcox"], height_lambda)
+    # Inverse box-cox transformation
+    sd["Speed"] = scipy.special.inv_boxcox(sd["Speed_boxcox"], speed_lambda)
+    sd["Height"] = scipy.special.inv_boxcox(sd["Height_boxcox"], height_lambda)
 
-        # Transformation can result in negative values, fix these
-        sd["Speed"] = sd["Speed"].interpolate(method='linear').bfill().ffill().clip(lower=0)
-        sd["Height"] = sd["Height"].interpolate(method='linear').bfill().ffill().clip(lower=0)
+    # Transformation can result in negative values, fix these
+    sd["Speed"] = sd["Speed"].interpolate(method='linear').bfill().ffill().clip(lower=0)
+    sd["Height"] = sd["Height"].interpolate(method='linear').bfill().ffill().clip(lower=0)
 
-        # Only keep columns of interest
-        sd = sd[["Scenario", "Hour", "Day", "Month", "Speed", "Height"]]
+    # Only keep columns of interest
+    sd = sd[["Scenario", "Hour", "DayID", "Month", "Speed", "Height"]]
+    sd = sd.rename(columns={"DayID": "Day"})
 
-        all_scenarios.append(sd)
-
-    all_scenarios = pd.concat(all_scenarios, ignore_index=True)
-
+    
     # Save to CSV
-    all_scenarios.to_csv(
+    sd.to_csv(
         os.path.join(OUTPUT_FOLDER, file), 
         index=False,
         float_format="%.4f"
