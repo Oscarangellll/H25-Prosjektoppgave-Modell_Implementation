@@ -1,5 +1,3 @@
-# import weather_windows
-# import failure_generation
 
 class VesselType:
     def __init__(self, name, n_teams, max_wind, max_wave, shift_length, day_rate, mob_rate):
@@ -18,11 +16,12 @@ class VesselType:
         return self.day_rate * days * n_periods + self.mob_rate
 
 class WindFarm:
-    def __init__(self, name, n_turbines, location, distance_to_base):
+    def __init__(self, name, n_turbines, location, distance_to_base, weather_data_file):
         self.name = name
         self.n_turbines = n_turbines
         self.location = location
         self.distance_to_base = distance_to_base
+        self.weather_data_file = weather_data_file
 
 class MaintenanceCategory:
     def __init__(self, name, failure_rate, duration, vessel_types):
@@ -31,17 +30,5 @@ class MaintenanceCategory:
         self.duration = duration # in hours
         self.vessel_types = vessel_types
 
-vessels = [
-    VesselType("CTV", n_teams=2, max_wind=15, max_wave=1.5, shift_length=12, day_rate=3000, mob_rate=50_000),
-]
 
-maintenance_categories = [
-    MaintenanceCategory("Annual Service", failure_rate=5.0, duration=2, vessel_types=["CTV", "SOV"])
-]
-
-days = 30
-T = ["Jan"]
-
-C_ST = {(v, t): v.calculate_ST(days) for v in vessels for t in T}
-C_LT = {(v): v.calculate_LT(days, len(T)) for v in vessels}
 
