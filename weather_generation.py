@@ -4,8 +4,6 @@ import numpy as np
 import scipy
 from statsmodels.tsa.vector_ar.var_model import VAR
 
-import weather_config as weather_conf
-
 INPUT_FOLDER = "Weather Data"
 OUTPUT_FOLDER = "Synthetic Weather Data"
 
@@ -50,8 +48,8 @@ for file in files:
     # Simulate VAR
     ##############
 
-    H, D, M, nS = weather_conf.HOURS, weather_conf.DAYS, weather_conf.MONTHS, weather_conf.SCENARIOS
-    seed = weather_conf.SEED
+    H, D, M, nS = 24, 30, 12, 100
+    seed = 18
     num_to_simulate = H * D * M * nS
 
     # Simulate one year of syntethic data in isolation.
