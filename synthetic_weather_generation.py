@@ -32,7 +32,7 @@ plt.rcParams.update({
     "patch.linewidth": 0.5}) 
 
 # Load data
-weather_data = pd.read_csv("Weather Data/Location 1.csv", sep=",")
+weather_data = pd.read_csv("Weather Data/Wind Farm 1.csv", sep=",")
 
 # Convert Time column to datetime
 weather_data['Time'] = pd.to_datetime(weather_data['Time'])
@@ -115,7 +115,6 @@ sim_weather["Sim_height"] = sim_wave
 
 #make repeating dayID for every scenario
 sim_weather["DayID"] = D * sim_weather["Month"] + sim_weather["Day"] - D
-
 
 sim_weather = sim_weather.merge(monthly_stats, on='Month', how='left')
 

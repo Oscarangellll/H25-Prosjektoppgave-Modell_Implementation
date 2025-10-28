@@ -12,6 +12,40 @@ from typing import Dict, List, Callable, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+Maintenance_categories = {
+    "Annual Service": {
+        "Failure_Rate_per_year": 5.0,
+        "Vessel_Type": ["CTV", "SOV"],
+        "Duration_hours": 2
+    },
+    "Manual Reset": {
+        "Failure_Rate_per_year": 7.5,
+        "Vessel_Type": ["CTV", "SOV"],
+        "Duration_hours": 3
+    },
+    "Minor Repair": {
+        "Failure_Rate_per_year": 3.0,
+        "Vessel_Type": ["CTV", "SOV"],
+        "Duration_hours": 7.5
+    },
+    "Medium Repair": {
+        "Failure_Rate_per_year": 1.5,
+        "Vessel_Type": ["CTV", "SOV"],
+        "Duration_hours": 7.5
+    },
+    "Major Repair": {
+        "Failure_Rate_per_year": 0.825,
+        "Vessel_Type": ["SOV"],
+        "Duration_hours": 7.33
+    },
+    "Severe Repair": {
+        "Failure_Rate_per_year": 0.12,
+        "Vessel_Type": ["SOV"],
+        "Duration_hours": 8.66
+    }
+}
+
+
 def simulate_failures_poisson_by_category(
     days: int, # days
     windfarms: List[str], # wind farms
