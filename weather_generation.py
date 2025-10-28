@@ -4,8 +4,10 @@ import numpy as np
 import scipy
 from statsmodels.tsa.vector_ar.var_model import VAR
 
-INPUT_FOLDER = "Weather Data"
-OUTPUT_FOLDER = "Synthetic Weather Data"
+import config
+
+INPUT_FOLDER = config.WEATHER_DATA_FOLDER
+OUTPUT_FOLDER = config.SYN_WEATHER_DATA_FOLDER 
 
 # Generate data for each location
 files = [f for f in os.listdir(INPUT_FOLDER) if f.endswith(".csv")]
@@ -48,9 +50,9 @@ for file in files:
     # Simulate VAR
     ##############
 
-    H, D, M, nS = 24, 30, 12, 100
-    seed = 18
-    num_to_simulate = H * D * M * nS
+    H, D, M, S = config.HOURS, config.DAYS, len(config.MONTHS), config.SCENARIOS 
+    seed = config.SEED
+    num_to_simulate = H * D * M * S
 
     # Simulate one year of syntethic data in isolation.
 
@@ -60,12 +62,11 @@ for file in files:
 
     # Build the simulated data which will be concatenated
     idx = pd.MultiIndex.from_product(
-        [range(1, nS +1), range(1, M + 1), range(1, D + 1), range(0, H)],
+        [range(1, S +1), range(1, M + 1), range(1, D + 1), range(0, H)],
             names=["Scenario", "Month", "Day", "Hour"]
     )
         
     sd = pd.DataFrame(index=idx).reset_index()
-    sd = sd[["Scenario", "Hour", "Day", "Month"]] # Change order of columns
     sd["Speed_standardized"] = sim_speed
     sd["Height_standardized"] = sim_height
     sd["DayID"] = D * sd["Month"] + sd["Day"] - D
