@@ -3,15 +3,15 @@ import os
 
 import config
 
-def _find_window(speed, height, vessel):
+def _find_window(speed, height, vessel_type):
     """
     Find the longest operable weather window (in hours)
-    for a given vessel and daily weather data.
+    for a given vessel_type and daily weather data.
     """
 
-    max_speed = vessel.max_wind
-    max_height = vessel.max_wave
-    shift_limit = vessel.shift_length
+    max_speed = vessel_type.max_wind
+    max_height = vessel_type.max_wave
+    shift_limit = vessel_type.shift_length
     
     current_window = 0
     max_window = 0
@@ -28,19 +28,19 @@ def _find_window(speed, height, vessel):
     max_window = min(max_window, shift_limit)
     return max_window
 
-def find_weather_windows(scenarios, wind_farms, vessels):
+def find_weather_windows(scenarios, wind_farms, vessel_types):
     weather_windows = {}
 
-    for w in wind_farms:
+    for i in wind_farms:
         data = pd.read_csv(os.path.join(config.SYN_WEATHER_DATA_FOLDER, w.weather_data_file))
         data = data[data["Scenario"].isin(scenarios)]
         for s, scenario_data in data.groupby("Scenario"):
             for d, daily_data in scenario_data.groupby("Day"):
-                for v in vessels:
-                    weather_windows[(v.name, w.name, d, s)] = _find_window(
+                for h in vessel_types:
+                    weather_windows[(h.name, i.name, d, s)] = _find_window(
                                     daily_data["Speed"],
                                     daily_data["Height"],
-                                    v
+                                    h
                                 )
     return weather_windows
 """

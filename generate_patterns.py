@@ -6,16 +6,16 @@ def generate_patterns(vessels, maintenance_categories, debug=False):
     model = gp.Model()
 
     l = model.addVars((m.name for m in maintenance_categories), vtype=GRB.INTEGER, name="l")
-    d = model.addVar(vtype=GRB.INTEGER, name="d")
+    d = model.addVar(name="d")
 
     model.setObjective(0)
-    model.addConstr(gp.quicksum(l[m.name] * m.duration for m in maintenance_categories) <= 7)
+    model.addConstr(gp.quicksum(l[m.name] * m.duration for m in maintenance_categories) <= 12)
     model.addConstr(d == gp.quicksum(l[m.name] * m.duration for m in maintenance_categories))
     
     if not debug:
         model.Params.OutputFlag = 0
 
-    model.Params.PoolSolutions = 100
+    model.Params.PoolSolutions = 1000
     model.Params.PoolSearchMode = 2
 
     model.optimize()
@@ -42,21 +42,25 @@ def generate_patterns(vessels, maintenance_categories, debug=False):
                 K[v.name].append(k)
                     
     return K, L, P
-"""
-maintenance_categories = [
-    MaintenanceCategory("Annual Service", failure_rate=5.0, duration=2, vessel_types=["CTV", "SOV"]),
-    MaintenanceCategory("Manual Reset", failure_rate=7.5, duration=4, vessel_types=["SOV"]),
-]
 
-vessels = [
-    VesselType("CTV", n_teams=2, max_wind=15, max_wave=1.5, shift_length=12, day_rate=3000, mob_rate=50_000),
-    VesselType("SOV", n_teams=1, max_wind=20, max_wave=2.5, shift_length=24, day_rate=10_000, mob_rate=200_000),
-]
+# maintenance_categories = [
+#     MaintenanceCategory("Annual Service", failure_rate=5.0, duration=2, vessel_types=["CTV", "SOV"]),
+#     MaintenanceCategory("Manual Reset", failure_rate=7.5, duration=4, vessel_types=["CTV", "SOV"]),
+#     MaintenanceCategory("Minor Repair", failure_rate=3, duration=3.75, vessel_types=["CTV", "SOV"]),
+#     MaintenanceCategory("Medium Repair", failure_rate=0.825, duration=3.67, vessel_types=["CTV", "SOV"]),
+#     MaintenanceCategory("Severe Repair", failure_rate=0.12, duration=4.33, vessel_types=["SOV"]),
+# ]
 
-K, L, P = generate_patterns(vessels, maintenance_categories)
-print("Kv:", K)
-print(" ")
-print("Lk:", L)
-print(" ")
-print("Pmk:", P)
-"""
+# vessels = [
+#     VesselType("CTV", n_teams=2, max_wind=15, max_wave=1.5, shift_length=12, day_rate=3000, mob_rate=50_000),
+#     VesselType("SOV", n_teams=1, max_wind=20, max_wave=2.5, shift_length=24, day_rate=10_000, mob_rate=200_000),
+# ]
+
+# K, L, P = generate_patterns(vessels, maintenance_categories)
+# print("Kv:", K)
+# print(" ")
+# print("Lk:", L)
+# print(" ")
+# print("Pmk:", P)
+# print(" ")
+# print("Number of patterns generated:", len(L))

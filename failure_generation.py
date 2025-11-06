@@ -1,5 +1,6 @@
 import numpy as np
-
+from classes import WindFarm
+from classes import MaintenanceCategory
 import config
 
 def failures(scenarios, wind_farms, maintenance_categories):
