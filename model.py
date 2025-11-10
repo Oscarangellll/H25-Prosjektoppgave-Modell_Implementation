@@ -30,32 +30,19 @@ def model(
     ### Sets
     # First stage
     H = [h.name for h in vessel_types]
-    print(f"H: {H}")
     H_M = [h.name for h in vessel_types if h.multiday] 
-    print(f"H_M: {H_M}")
     H_S = [h.name for h in vessel_types if not h.multiday]
-    print(f"H_S: {H_S}")
     V = {h: [v.name for v in vessels if v.vessel_type.name == h] for h in H_M}
-    print(f"V: {V}")
     T = months 
-    print(f"T: {T}")
     # Second stage
     W = [w.name for w in wind_farms]
-    print(f"W: {W}")
     B = base.name
-    print(f"B: {B}")
     L = [B] + W
-    print(f"L: {L}")
     M = [m.name for m in maintenance_categories]
-    print(f"M: {M}")
     K = pattern_indexes_for_h
-    print(f"K: {K}")
     D = [d for d in range(1, len(months) * days_per_month + 1)]
-    print(f"D: {D}")
     D_t = {month: D[i * days_per_month : (i + 1) * days_per_month] for i, month in enumerate(months)} 
-    print(f"D_t: {D_t}")
     S = scenarios
-    print(f"S: {S}")
 
     ### Parameters
     # First stage
@@ -111,9 +98,17 @@ def model(
         name="f"
     )
     
+    r = model.addVars(
+        ((v, d) for v in V for d in D),
+        vtype=gp.GRB.BINARY,
+        name="r"
+    )
+    
     ### Objective 
     # First stage
     first_obj = gamma_ST.prod(C_ST) + gamma_LT.prod(C_LT)
+    # print objective function
+    print("First stage objective:", first_obj)
     # Second stage
     second_obj = (
         gp.quicksum(C_D[i, d, s] * b[i, m, d, s] for i in W for m in M for d in D for s in S) 
@@ -125,6 +120,10 @@ def model(
     model.setObjective(first_obj + second_obj)
 
     ### Constraints
+    #force alpha_LT to 0
+    model.addConstrs(
+        (alpha_LT[v] == 0 for h in H_M for v in V[h])
+    )
     # First stage
     model.addConstrs(
         (gamma_ST[h, t] == gp.quicksum(alpha_ST[v, t] for v in V[h])
@@ -155,7 +154,7 @@ def model(
     (alpha_LT[V[h][v]] >= alpha_LT[V[h][v+1]]
     for h in H_M
     for v in range(len(V[h]) - 1)),
-    name="symmetry_break_ST"        
+    name="symmetry_break_LT"        
     )
     # Second stage
     model.addConstrs(
@@ -168,12 +167,14 @@ def model(
     )
     
     model.addConstrs(
-        (delta.sum(v, "*", d, s) <= alpha_ST[v, t] + alpha_LT[v]
-        for h in H_M
-        for v in V[h]
-        for t in T
-        for d in D_t[t]
-        for s in S),
+        (
+            gp.quicksum(delta[v, i, d, s] for i in L) <= alpha_ST[v, t] + alpha_LT[v]
+            for h in H_M
+            for v in V[h]
+            for t in T
+            for d in D_t[t]
+            for s in S
+        ),
         name="M_vessels_available"
     )
     
@@ -253,10 +254,16 @@ def model(
         for h in H_M
         for v in V[h]
         for i in L
-        for d in D
+        for t in T
+        for d in D_t[t] #if d % len(D_t[t]) != 1
         for s in S),
         name="flow"
-    )    
+    )
+    
+    # model.addConstrs(
+    #     ()
+    # )
+        
     return model
     
 def real_model(
@@ -355,56 +362,56 @@ for v in vessel_types:
             for s in scenarios:
                 weather_windows[(v.name, w.name, d, s)] = 10
 
-model = model(
-    name, 
-    vessel_types, 
-    vessels,
-    wind_farms,
-    base,
-    days_per_month,
-    months,
-    maintenance_categories,
-    pattern_indexes_for_h,
-    scenarios,
-    failures,
-    patterns,
-    pattern_lengths,
-    weather_windows,
-    downtime_cost_per_day=200000000,
-    
-)
-
-model.optimize()
-
-#print some results
-# for v in model.getVars():
-#     if v.X >= 0:
-#         print(f"{v.VarName}: {v.X}")
-
-# name = "Two Stage Model"
-
-# vessels = [
-#     VesselType("CTV", n_teams=3, max_wind=15, max_wave=2, shift_length=10, day_rate=20, mob_rate=300),
-#     VesselType("SOV", n_teams=5, max_wind=20, max_wave=2.5, shift_length=12, day_rate=200, mob_rate=300)
-# ]
-
-# wind_farms = [
-#     WindFarm("Wind Farm A", n_turbines=120, location=None, distance_to_base=None, weather_data_file="Location 1.csv"),
-#     WindFarm("Wind Farm B", n_turbines=100, location=None, distance_to_base=None, weather_data_file="Location 1.csv")
-# ]
-
-# maintenance_categories = [
-#     MaintenanceCategory("Small", failure_rate=5, duration=2, vessel_types=["CTV", "SOV"]),
-#     MaintenanceCategory("Large", failure_rate=3, duration=5, vessel_types=["SOV"])
-# ]
-
-# real_model(
-#     name,
+# model = model(
+#     name, 
+#     vessel_types, 
 #     vessels,
-#     wind_farms, 
+#     wind_farms,
+#     base,
+#     days_per_month,
+#     months,
 #     maintenance_categories,
-#     4
+#     pattern_indexes_for_h,
+#     scenarios,
+#     failures,
+#     patterns,
+#     pattern_lengths,
+#     weather_windows,
+#     downtime_cost_per_day=200000000,
+    
 # )
+
+# model.optimize()
+
+# #print some results
+# # for v in model.getVars():
+# #     if v.X >= 0:
+# #         print(f"{v.VarName}: {v.X}")
+
+# # name = "Two Stage Model"
+
+# # vessels = [
+# #     VesselType("CTV", n_teams=3, max_wind=15, max_wave=2, shift_length=10, day_rate=20, mob_rate=300),
+# #     VesselType("SOV", n_teams=5, max_wind=20, max_wave=2.5, shift_length=12, day_rate=200, mob_rate=300)
+# # ]
+
+# # wind_farms = [
+# #     WindFarm("Wind Farm A", n_turbines=120, location=None, distance_to_base=None, weather_data_file="Location 1.csv"),
+# #     WindFarm("Wind Farm B", n_turbines=100, location=None, distance_to_base=None, weather_data_file="Location 1.csv")
+# # ]
+
+# # maintenance_categories = [
+# #     MaintenanceCategory("Small", failure_rate=5, duration=2, vessel_types=["CTV", "SOV"]),
+# #     MaintenanceCategory("Large", failure_rate=3, duration=5, vessel_types=["SOV"])
+# # ]
+
+# # real_model(
+# #     name,
+# #     vessels,
+# #     wind_farms, 
+# #     maintenance_categories,
+# #     4
+# # )
 
 
 
