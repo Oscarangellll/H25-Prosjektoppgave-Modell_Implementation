@@ -7,7 +7,7 @@ from model import model
 name = "Two Stage Test Model"
 vessel_types = [
     VesselType("CTV", multiday=False, n_teams=3, max_wind=15, max_wave=2, shift_length=10, day_rate=20, mob_rate=300, speed=30, cost_per_km=3, periodic_return=None, usage_cost_per_day=10),
-    VesselType("SOV", multiday=True, n_teams=5, max_wind=20, max_wave=2.5, shift_length=12, day_rate=50, mob_rate=1000, speed=20, cost_per_km=5, periodic_return=7, usage_cost_per_day=20)
+    VesselType("SOV", multiday=True, n_teams=5, max_wind=20, max_wave=2.5, shift_length=12, day_rate=50, mob_rate=1000, speed=20, cost_per_km=5, periodic_return=5, usage_cost_per_day=20)
 ]
 vessels = [
     Vessel("SOV1", vessel_type=vessel_types[1])
@@ -79,7 +79,7 @@ weather_windows = {
     ("SOV", "Wind Farm A", 9, 1): 24,
     ("SOV", "Wind Farm A", 10, 1): 24
 }
-downtime_cost_per_day = 100000
+downtime_cost_per_day = 600000000
 
 model = model(
     name, 
@@ -111,8 +111,7 @@ for v in model.getVars():
     # print(v)
     if v.X > 0:
         print(f"{v.VarName}: {v.X}")
-        
-        
+
 # Expected output when failure is small:
 # Charter CTV short term in january
 # Fix failure on day 2 in January

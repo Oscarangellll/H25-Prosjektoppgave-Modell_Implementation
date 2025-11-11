@@ -47,7 +47,7 @@ def model(
     ### Parameters
     # First stage
     C_ST = {(h.name, t): h.calculate_ST(days_per_month) for h in vessel_types for t in T}
-    C_LT = {h.name: h.calculate_LT(days_per_month, len(months)) for h in vessel_types}
+    C_LT = {h.name: 10000 for h in vessel_types} # h.calculate_LT(days_per_month, len(months)) for h in vessel_types}
     # Second stage
     F = failures
     N = {h.name: h.n_teams for h in vessel_types}
@@ -98,17 +98,23 @@ def model(
         name="f"
     )
     
-    r = model.addVars(
-        ((v, d) for v in V for d in D),
+    r_START = model.addVars(
+        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D for s in S),
         vtype=gp.GRB.BINARY,
-        name="r"
+        name="r_START"
+    )
+    
+    r_END = model.addVars(
+        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D for s in S),
+        vtype=gp.GRB.BINARY,
+        name="r_END"
     )
     
     ### Objective 
     # First stage
     first_obj = gamma_ST.prod(C_ST) + gamma_LT.prod(C_LT)
     # print objective function
-    print("First stage objective:", first_obj)
+    # print("First stage objective:", first_obj)
     # Second stage
     second_obj = (
         gp.quicksum(C_D[i, d, s] * b[i, m, d, s] for i in W for m in M for d in D for s in S) 
@@ -120,10 +126,6 @@ def model(
     model.setObjective(first_obj + second_obj)
 
     ### Constraints
-    #force alpha_LT to 0
-    model.addConstrs(
-        (alpha_LT[v] == 0 for h in H_M for v in V[h])
-    )
     # First stage
     model.addConstrs(
         (gamma_ST[h, t] == gp.quicksum(alpha_ST[v, t] for v in V[h])
@@ -157,6 +159,17 @@ def model(
     name="symmetry_break_LT"        
     )
     # Second stage
+    ###### force variables #####
+    # model.addConstrs(
+    #     alpha_LT[v] == 0 for h in H_M for v in V[h]
+    #)
+    # model.addConstrs(
+    #     alpha_ST[v, "January"] == 1 for h in H_M for v in V[h]
+    # )
+    # model.addConstrs(
+    #     alpha_ST[v, "February"] == 0 for h in H_M for v in V[h]
+    # )
+    ##########
     model.addConstrs(
         (x.sum(h, '*', d, s) <= gamma_ST[h, t] + gamma_LT[h] 
         for h in H 
@@ -250,7 +263,7 @@ def model(
     )
     
     model.addConstrs(
-        (delta[v, i, d-1, s] + gp.quicksum(f[v, j, i, d-1, s] for j in L if j != i) - gp.quicksum(f[v, i, j, d-1, s] for j in L if j != i) == delta[v, i, d, s]
+        (delta[v, i, d-1, s] + gp.quicksum(f[v, j, i, d-1, s] for j in L if j != i) - gp.quicksum(f[v, i, j, d-1, s] for j in L if j != i) == delta[v, i, d, s] - r_START[v, i, d, s] + r_END[v, i, d, s]
         for h in H_M
         for v in V[h]
         for i in L
@@ -260,10 +273,80 @@ def model(
         name="flow"
     )
     
-    # model.addConstrs(
-    #     ()
-    # )
-        
+    model.addConstrs(
+        (r_START[v, i, d, s] <= alpha_ST[v, T[t]]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in range(1, len(T[1:]) + 1)
+        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for s in S),
+        name="ST_charter_transition_upper"
+    )
+    
+    model.addConstrs(
+        (r_START[v, i, d, s] <= 1 - alpha_ST[v, T[t-1]]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in range(1, len(T[1:]) + 1)
+        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for s in S),
+        name="ST_charter_transition_bound"
+    )
+    
+    model.addConstrs(
+        (r_END[v, i, d, s] <= alpha_ST[v, T[t-1]]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in range(1, len(T[1:]) + 1)
+        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for s in S),
+        name="ST_charter_transition_upper"
+    )
+    
+    model.addConstrs(
+        (r_END[v, i, d, s] <= 1 - alpha_ST[v, T[t]]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in range(1, len(T[1:]) + 1)
+        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for s in S),
+        name="ST_charter_transition_bound"
+    )
+    
+    model.addConstrs(
+        (r_START[v, i, d, s] + r_END[v, i, d, s] == 0
+        for t in T
+        for d in D_t[t] if d % len(D_t[t]) != 1 or t == "January"
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for s in S),
+        name="ST_charter_no_transition"
+    )
+    
+    model.addConstrs(
+        (r_START[v, i, d, s] <= delta[v, i, d, s]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in T
+        for d in D_t[t]
+        for s in S)
+    )
+    model.addConstrs(
+        (r_END[v, i, d, s] <= delta[v, i, d-1, s]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in T
+        for d in D_t[t]
+        for s in S)
+    )
+    
     return model
     
 def real_model(
@@ -303,64 +386,64 @@ def real_model(
         weather_windows=A
     )
 
-#Test case
-name = "Two Stage Test Model"
+# #Test case
+# name = "Two Stage Test Model"
 
-vessel_types = [
-    VesselType("CTV", multiday=False, n_teams=3, max_wind=15, max_wave=2, shift_length=10, day_rate=20, mob_rate=300, speed=30, cost_per_km=3, periodic_return=None, usage_cost_per_day=10),
-    VesselType("SOV", multiday=True, n_teams=5, max_wind=18, max_wave=2.5, shift_length=12, day_rate=5, mob_rate=300, speed=30, cost_per_km=3, periodic_return=7, usage_cost_per_day=10)
-]
+# vessel_types = [
+#     VesselType("CTV", multiday=False, n_teams=3, max_wind=15, max_wave=2, shift_length=10, day_rate=20, mob_rate=300, speed=30, cost_per_km=3, periodic_return=None, usage_cost_per_day=10),
+#     VesselType("SOV", multiday=True, n_teams=5, max_wind=18, max_wave=2.5, shift_length=12, day_rate=5, mob_rate=300, speed=30, cost_per_km=3, periodic_return=7, usage_cost_per_day=10)
+# ]
 
-vessels = [
-    Vessel("SOV1", vessel_type=vessel_types[1]),
-    Vessel("SOV2", vessel_type=vessel_types[1])
-]
+# vessels = [
+#     Vessel("SOV1", vessel_type=vessel_types[1]),
+#     Vessel("SOV2", vessel_type=vessel_types[1])
+# ]
 
-days_per_month = 30
-months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+# days_per_month = 30
+# months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-wind_farms = [
-    WindFarm("Wind Farm A", coordinates=(54.4, 7.3), n_turbines=120, weather_data_file=None),
-    WindFarm("Wind Farm B", coordinates=(53.9, 6.9), n_turbines=100, weather_data_file=None)
-]
+# wind_farms = [
+#     WindFarm("Wind Farm A", coordinates=(54.4, 7.3), n_turbines=120, weather_data_file=None),
+#     WindFarm("Wind Farm B", coordinates=(53.9, 6.9), n_turbines=100, weather_data_file=None)
+# ]
 
-base = Base("Base", coordinates=(53.7, 7.4))
+# base = Base("Base", coordinates=(53.7, 7.4))
 
-maintenance_categories = [
-    MaintenanceCategory("Small", failure_rate=None, duration=2, vessel_types=["CTV", "SOV"])
-]
+# maintenance_categories = [
+#     MaintenanceCategory("Small", failure_rate=None, duration=2, vessel_types=["CTV", "SOV"])
+# ]
 
-pattern_indexes_for_h = {
-    "CTV": [0, 1],
-    "SOV": [0, 1]
-    }
+# pattern_indexes_for_h = {
+#     "CTV": [0, 1],
+#     "SOV": [0, 1]
+#     }
 
-scenarios = [1, 2, 3]
+# scenarios = [1, 2, 3]
 
-failures = {}
-for m in maintenance_categories:
-    for w in wind_farms:
-        for d in range(1, len(months) * days_per_month + 1):
-            for s in scenarios:
-                if m.name == "Small":
-                    failures[(w.name, m.name, d, s)] = random.randint(0, 10) 
-                else:
-                    failures[(w.name, m.name, d, s)] = random.randint(0, 2)  
+# failures = {}
+# for m in maintenance_categories:
+#     for w in wind_farms:
+#         for d in range(1, len(months) * days_per_month + 1):
+#             for s in scenarios:
+#                 if m.name == "Small":
+#                     failures[(w.name, m.name, d, s)] = random.randint(0, 10) 
+#                 else:
+#                     failures[(w.name, m.name, d, s)] = random.randint(0, 2)  
 
-patterns = {}
-patterns[("Small", 0)] = 2
-patterns[("Small", 1)] = 1
+# patterns = {}
+# patterns[("Small", 0)] = 2
+# patterns[("Small", 1)] = 1
 
-pattern_lengths = {}
-pattern_lengths[0] = 5
-pattern_lengths[1] = 2
+# pattern_lengths = {}
+# pattern_lengths[0] = 5
+# pattern_lengths[1] = 2
 
-weather_windows = {}
-for v in vessel_types:
-    for w in wind_farms:
-        for d in range(1, len(months) * days_per_month + 1):
-            for s in scenarios:
-                weather_windows[(v.name, w.name, d, s)] = 10
+# weather_windows = {}
+# for v in vessel_types:
+#     for w in wind_farms:
+#         for d in range(1, len(months) * days_per_month + 1):
+#             for s in scenarios:
+#                 weather_windows[(v.name, w.name, d, s)] = 10
 
 # model = model(
 #     name, 
