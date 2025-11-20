@@ -2,7 +2,7 @@ from classes import MaintenanceCategory, VesselType
 import gurobipy as gp
 from gurobipy import GRB
 
-def generate_patterns(vessels, maintenance_categories, debug=False):
+def generate_patterns(vessel_types, maintenance_categories, debug=False):
     model = gp.Model()
 
     l = model.addVars((m.name for m in maintenance_categories), vtype=GRB.INTEGER, name="l")
@@ -22,7 +22,7 @@ def generate_patterns(vessels, maintenance_categories, debug=False):
 
     nSolutions = model.SolCount
 
-    K = {v.name: [] for v in vessels}
+    K = {v.name: [] for v in vessel_types}
     L = {}
     P = {}
 
@@ -37,7 +37,7 @@ def generate_patterns(vessels, maintenance_categories, debug=False):
             if val > 1e-4:
                 active_m.append(m)
         
-        for v in vessels:
+        for v in vessel_types:
             if all([v.name in m.vessel_types for m in active_m]):
                 K[v.name].append(k)
                     
@@ -51,12 +51,12 @@ def generate_patterns(vessels, maintenance_categories, debug=False):
 #     MaintenanceCategory("Severe Repair", failure_rate=0.12, duration=4.33, vessel_types=["SOV"]),
 # ]
 
-# vessels = [
-#     VesselType("CTV", n_teams=2, max_wind=15, max_wave=1.5, shift_length=12, day_rate=3000, mob_rate=50_000),
-#     VesselType("SOV", n_teams=1, max_wind=20, max_wave=2.5, shift_length=24, day_rate=10_000, mob_rate=200_000),
+# vessel_types = [
+#     VesselType("CTV", multiday=False, n_teams=3, max_wind=25, max_wave=1.5, shift_length=10, day_rate=2_940, mob_rate=58_825, speed=35, cost_per_km=8, periodic_return=None, usage_cost_per_day=800),
+#     VesselType("SOV", multiday=True, n_teams=7, max_wind=30, max_wave=2, shift_length=12, day_rate=11_765, mob_rate=235_295, speed=20, cost_per_km=10, periodic_return=14, usage_cost_per_day=5000)
 # ]
 
-# K, L, P = generate_patterns(vessels, maintenance_categories)
+# K, L, P = generate_patterns(vessel_types, maintenance_categories)
 # print("Kv:", K)
 # print(" ")
 # print("Lk:", L)

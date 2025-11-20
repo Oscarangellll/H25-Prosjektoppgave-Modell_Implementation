@@ -51,7 +51,7 @@ for file in files:
     ##############
 
     H, D, M, S = config.HOURS, config.DAYS, len(config.MONTHS), config.SCENARIOS 
-    seed = config.SEED
+    seed = config.RANDOM_SEED
     num_to_simulate = H * D * M * S
 
     # Simulate one year of syntethic data in isolation.

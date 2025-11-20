@@ -79,7 +79,7 @@ weather_windows = {
     ("SOV", "Wind Farm A", 9, 1): 24,
     ("SOV", "Wind Farm A", 10, 1): 24
 }
-downtime_cost_per_day = 600000000
+downtime_cost_per_day = 1000
 
 model = model(
     name, 

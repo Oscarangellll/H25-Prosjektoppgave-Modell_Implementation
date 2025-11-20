@@ -10,6 +10,7 @@ def failures(scenarios, wind_farms, maintenance_categories):
     F : dict
         (wind farm, task, day, scenario): number of failures
     """
+    np.random.seed(config.RANDOM_SEED)
     p = [m.failure_rate / 365 for m in maintenance_categories]
 
     if sum(p) > 1.0:

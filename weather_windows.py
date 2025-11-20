@@ -32,7 +32,7 @@ def find_weather_windows(scenarios, wind_farms, vessel_types):
     weather_windows = {}
 
     for i in wind_farms:
-        data = pd.read_csv(os.path.join(config.SYN_WEATHER_DATA_FOLDER, w.weather_data_file))
+        data = pd.read_csv(os.path.join(config.SYN_WEATHER_DATA_FOLDER, i.weather_data_file))
         data = data[data["Scenario"].isin(scenarios)]
         for s, scenario_data in data.groupby("Scenario"):
             for d, daily_data in scenario_data.groupby("Day"):

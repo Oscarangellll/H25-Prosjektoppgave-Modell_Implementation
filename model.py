@@ -41,13 +41,14 @@ def model(
     M = [m.name for m in maintenance_categories]
     K = pattern_indexes_for_h
     D = [d for d in range(1, len(months) * days_per_month + 1)]
-    D_t = {month: D[i * days_per_month : (i + 1) * days_per_month] for i, month in enumerate(months)} 
+    D_t = {month: D[i * days_per_month : (i + 1) * days_per_month] for i, month in enumerate(months)}
+    D_B = [d for d in D if d % days_per_month == 1 and d != 1]
     S = scenarios
 
     ### Parameters
     # First stage
     C_ST = {(h.name, t): h.calculate_ST(days_per_month) for h in vessel_types for t in T}
-    C_LT = {h.name: 10000 for h in vessel_types} # h.calculate_LT(days_per_month, len(months)) for h in vessel_types}
+    C_LT = {h.name: h.calculate_LT(days_per_month, len(months)) for h in vessel_types}
     # Second stage
     F = failures
     N = {h.name: h.n_teams for h in vessel_types}
@@ -87,25 +88,25 @@ def model(
     b = model.addVars(W, M, [0] + D, S, vtype=gp.GRB.INTEGER, name="b")
     
     delta = model.addVars(
-        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in [0] + D for s in S), 
+        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D for s in S), 
         vtype=gp.GRB.BINARY, 
         name="delta"
         )
 
     f = model.addVars(
-        ((v, i, j, d, s) for h in H_M for v in V[h] for i in L for j in L if i != j for d in [0] + D for s in S),
+        ((v, i, j, d, s) for h in H_M for v in V[h] for i in L for j in L if i != j for d in D for s in S),
         vtype=gp.GRB.BINARY, 
         name="f"
     )
     
     r_START = model.addVars(
-        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D for s in S),
+        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D_B for s in S),
         vtype=gp.GRB.BINARY,
         name="r_START"
     )
     
     r_END = model.addVars(
-        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D for s in S),
+        ((v, i, d, s) for h in H_M for v in V[h] for i in L for d in D_B for s in S),
         vtype=gp.GRB.BINARY,
         name="r_END"
     )
@@ -120,7 +121,7 @@ def model(
         gp.quicksum(C_D[i, d, s] * b[i, m, d, s] for i in W for m in M for d in D for s in S) 
         + gp.quicksum(C_U[h] * x[h, i, d, s] for h in H for i in W for d in D for s in S)
         + gp.quicksum(C_RT[h, i] * x[h, i, d, s] for h in H_S for i in W for d in D for s in S)
-        + gp.quicksum(C_T[h, i, j] * f[v, i, j, d, s] for h in H_M for v in V[h] for i in L for j in L if i != j for d in [0] + D for s in S)
+        + gp.quicksum(C_T[h, i, j] * f[v, i, j, d, s] for h in H_M for v in V[h] for i in L for j in L if i != j for d in D for s in S)
     )/len(S)
 
     model.setObjective(first_obj + second_obj)
@@ -162,12 +163,12 @@ def model(
     ###### force variables #####
     # model.addConstrs(
     #     alpha_LT[v] == 0 for h in H_M for v in V[h]
-    #)
+    # )
     # model.addConstrs(
     #     alpha_ST[v, "January"] == 1 for h in H_M for v in V[h]
     # )
     # model.addConstrs(
-    #     alpha_ST[v, "February"] == 0 for h in H_M for v in V[h]
+    #     alpha_ST[v, "February"] == 1 for h in H_M for v in V[h]
     # )
     ##########
     model.addConstrs(
@@ -210,13 +211,33 @@ def model(
         name="base_visit"
     )
     model.addConstrs(
-        (delta[v, B, 0, s] == alpha_ST[v, months[0]] + alpha_LT[v]
+        (delta[v, B, 1, s] == alpha_ST[v, months[0]] + alpha_LT[v]
         for h in H_M
         for v in V[h]
         for s in S),
         name="base_visit_day_0"
     )
-    
+    model.addConstrs(
+        (delta[v, B, D[-1], s] == alpha_ST[v, months[-1]] + alpha_LT[v]
+        for h in H_M
+        for v in V[h]
+        for s in S),
+        name="base_visit_day_0"
+    )
+    # model.addConstrs(
+    #     (delta[v, B, d, s] == r_START[v, B, d, s]
+    #     for h in H_M
+    #     for v in V[h]
+    #     for d in D_B
+    #     for s in S)
+    # )
+    # model.addConstrs(
+    #     (delta[v, B, d-1, s] == r_END[v, B, d, s]
+    #     for h in H_M
+    #     for v in V[h]
+    #     for d in D_B
+    #     for s in S)
+    # )
     model.addConstrs(
         (gp.quicksum(lmbd[h, i, d, k, s] for k in K[h]) <= N[h] * x[h, i, d, s]
         for h in H
@@ -225,7 +246,6 @@ def model(
         for s in S),
         name="teams_available"
     )
-
     model.addConstrs(
         ((L_k[k] + L_RT[h, i] - A[h, i, d, s]) * lmbd[h, i, d, k, s] <= 0
         for h in H
@@ -235,7 +255,6 @@ def model(
         for s in S),
         name="weather_window"
     )
-    
     model.addConstrs(
         (z[i, m, d, s] <= gp.quicksum(P[m, k] * lmbd[h, i, d, k, s] for h in H for k in K[h])
         for i in W
@@ -244,7 +263,6 @@ def model(
         for s in S),
         name="tasks_performed"
     )
-
     model.addConstrs(
         (b[i, m, 0, s] == B_init[i, m]
         for i in W
@@ -252,7 +270,6 @@ def model(
         for s in S),
         name="initial_backlog"
     )
-
     model.addConstrs(
         (b[i, m, d, s] == b[i, m, d-1, s,] + F[i, m, d, s] - z[i, m, d, s]
         for i in W 
@@ -261,89 +278,86 @@ def model(
         for s in S),
         name="backlog"
     )
-    
+    model.addConstrs(
+        (delta[v, i, d-1, s] + gp.quicksum(f[v, j, i, d-1, s] for j in L if j != i) - gp.quicksum(f[v, i, j, d-1, s] for j in L if j != i) == delta[v, i, d, s]
+        for h in H_M
+        for v in V[h]
+        for i in L
+        for t in T
+        for d in D_t[t] if d != 1 and d not in D_B #if d % len(D_t[t]) != 1
+        for s in S),
+        name="flow"
+    )
     model.addConstrs(
         (delta[v, i, d-1, s] + gp.quicksum(f[v, j, i, d-1, s] for j in L if j != i) - gp.quicksum(f[v, i, j, d-1, s] for j in L if j != i) == delta[v, i, d, s] - r_START[v, i, d, s] + r_END[v, i, d, s]
         for h in H_M
         for v in V[h]
         for i in L
         for t in T
-        for d in D_t[t] #if d % len(D_t[t]) != 1
+        for d in D_t[t] if d in D_B #if d % len(D_t[t]) != 1
         for s in S),
         name="flow"
     )
-    
     model.addConstrs(
         (r_START[v, i, d, s] <= alpha_ST[v, T[t]]
         for h in H_M
         for v in V[h]
         for i in L
         for t in range(1, len(T[1:]) + 1)
-        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for d in D_t[T[t]] if d in D_B
         for s in S),
         name="ST_charter_transition_upper"
     )
-    
     model.addConstrs(
         (r_START[v, i, d, s] <= 1 - alpha_ST[v, T[t-1]]
         for h in H_M
         for v in V[h]
         for i in L
         for t in range(1, len(T[1:]) + 1)
-        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for d in D_t[T[t]] if d in D_B
         for s in S),
         name="ST_charter_transition_bound"
     )
-    
+    model.addConstrs(
+        (r_START[v, B, d, s] <= delta[v, B, d, s]
+        for h in H_M
+        for v in V[h]
+        for d in D_B
+        for s in S)
+    )
     model.addConstrs(
         (r_END[v, i, d, s] <= alpha_ST[v, T[t-1]]
         for h in H_M
         for v in V[h]
         for i in L
         for t in range(1, len(T[1:]) + 1)
-        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for d in D_t[T[t]] if d in D_B
         for s in S),
         name="ST_charter_transition_upper"
     )
-    
     model.addConstrs(
         (r_END[v, i, d, s] <= 1 - alpha_ST[v, T[t]]
         for h in H_M
         for v in V[h]
         for i in L
         for t in range(1, len(T[1:]) + 1)
-        for d in D_t[T[t]] if d % len(D_t[T[t]]) == 1
+        for d in D_t[T[t]] if d in D_B
         for s in S),
         name="ST_charter_transition_bound"
     )
-    
     model.addConstrs(
-        (r_START[v, i, d, s] + r_END[v, i, d, s] == 0
-        for t in T
-        for d in D_t[t] if d % len(D_t[t]) != 1 or t == "January"
+        (r_END[v, B, d, s] <= delta[v, B, d-1, s]
         for h in H_M
         for v in V[h]
-        for i in L
-        for s in S),
-        name="ST_charter_no_transition"
-    )
-    
-    model.addConstrs(
-        (r_START[v, i, d, s] <= delta[v, i, d, s]
-        for h in H_M
-        for v in V[h]
-        for i in L
-        for t in T
-        for d in D_t[t]
+        for d in D_B
         for s in S)
     )
     model.addConstrs(
-        (r_END[v, i, d, s] <= delta[v, i, d-1, s]
+        (r_START[v, i, d, s] + r_END[v, i, d, s] == 0
         for h in H_M
         for v in V[h]
-        for i in L
-        for t in T
-        for d in D_t[t]
+        for i in W
+        for d in D_B
         for s in S)
     )
     

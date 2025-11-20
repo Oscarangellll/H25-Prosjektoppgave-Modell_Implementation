@@ -42,7 +42,7 @@ failures = {
     ("Wind Farm A", "Large", 3, 1): 0,
     ("Wind Farm A", "Large", 4, 1): 0,
     ("Wind Farm A", "Large", 5, 1): 0,
-    ("Wind Farm A", "Large", 6, 1): 1,
+    ("Wind Farm A", "Large", 6, 1): 0,
     ("Wind Farm A", "Large", 7, 1): 0,
     ("Wind Farm A", "Large", 8, 1): 0,
     ("Wind Farm A", "Large", 9, 1): 0,
