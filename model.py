@@ -17,7 +17,7 @@ def model(
     days_per_month: int,
     months: list[str],
     maintenance_categories: list[MaintenanceCategory],
-    pattern_indexes_for_h: dict[str, list[int]],
+    pattern_indexes_for_hids: dict[str, list[int]],
     scenarios: list[int],
     failures: dict[tuple[str, str, int, int], int],
     patterns: dict[tuple[str, int], int],
@@ -39,7 +39,7 @@ def model(
     B = base.name
     L = [B] + W
     M = [m.name for m in maintenance_categories]
-    K = pattern_indexes_for_h
+    K = pattern_indexes_for_hids
     D = [d for d in range(1, len(months) * days_per_month + 1)]
     D_t = {month: D[i * days_per_month : (i + 1) * days_per_month] for i, month in enumerate(months)}
     D_B = [d for d in D if d % days_per_month == 1 and d != 1]
@@ -53,8 +53,8 @@ def model(
     F = failures
     N = {h.name: h.n_teams for h in vessel_types}
     P = patterns
-    L_k = pattern_lengths
-    L_RT = {(h.name, i.name): 0 if h.name in H_M else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
+    # L_k = pattern_lengths
+    # L_RT = {(h.name, i.name): 0 if h.name in H_M else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
     A = weather_windows
     C_D = {(i, d, s): downtime_cost_per_day for i in W for d in D for s in S}
     C_U = {(h.name): h.usage_cost_per_day for h in vessel_types}
@@ -80,7 +80,7 @@ def model(
     # Second stage
     x = model.addVars(H, W, D, S, vtype=gp.GRB.INTEGER, name="x")
     lmbd = model.addVars(
-        ((h, i, d, k, s) for h in H for i in W for d in D for k in K[h] for s in S),
+        ((h, i, d, k, s) for h in H for i in W for d in D for s in S for k in K[h, i, d, s]),
         vtype=gp.GRB.INTEGER,
         name="lambda"
     )
@@ -239,24 +239,24 @@ def model(
     #     for s in S)
     # )
     model.addConstrs(
-        (gp.quicksum(lmbd[h, i, d, k, s] for k in K[h]) <= N[h] * x[h, i, d, s]
+        (gp.quicksum(lmbd[h, i, d, k, s] for k in K[h, i, d, s]) <= N[h] * x[h, i, d, s]
         for h in H
         for i in W
         for d in D
         for s in S),
         name="teams_available"
     )
+    # model.addConstrs(
+    #     ((L_k[k] + L_RT[h, i] - A[h, i, d, s]) * lmbd[h, i, d, k, s] <= 0
+    #     for h in H
+    #     for i in W
+    #     for d in D
+    #     for k in K[h]
+    #     for s in S),
+    #     name="weather_window"
+    # )
     model.addConstrs(
-        ((L_k[k] + L_RT[h, i] - A[h, i, d, s]) * lmbd[h, i, d, k, s] <= 0
-        for h in H
-        for i in W
-        for d in D
-        for k in K[h]
-        for s in S),
-        name="weather_window"
-    )
-    model.addConstrs(
-        (z[i, m, d, s] <= gp.quicksum(P[m, k] * lmbd[h, i, d, k, s] for h in H for k in K[h])
+        (z[i, m, d, s] <= gp.quicksum(P[m, k] * lmbd[h, i, d, k, s] for h in H for k in K[h, i, d, s])
         for i in W
         for m in M
         for d in D
@@ -299,20 +299,18 @@ def model(
         name="flow"
     )
     model.addConstrs(
-        (r_START[v, i, d, s] <= alpha_ST[v, T[t]]
+        (gp.quicksum(r_START[v, i, d, s] for i in L) <= alpha_ST[v, T[t]]
         for h in H_M
         for v in V[h]
-        for i in L
         for t in range(1, len(T[1:]) + 1)
         for d in D_t[T[t]] if d in D_B
         for s in S),
         name="ST_charter_transition_upper"
     )
     model.addConstrs(
-        (r_START[v, i, d, s] <= 1 - alpha_ST[v, T[t-1]]
+        (gp.quicksum(r_START[v, i, d, s] for i in L) <= 1 - alpha_ST[v, T[t-1]]
         for h in H_M
         for v in V[h]
-        for i in L
         for t in range(1, len(T[1:]) + 1)
         for d in D_t[T[t]] if d in D_B
         for s in S),
@@ -326,20 +324,18 @@ def model(
         for s in S)
     )
     model.addConstrs(
-        (r_END[v, i, d, s] <= alpha_ST[v, T[t-1]]
+        (gp.quicksum(r_END[v, i, d, s] for i in L) <= alpha_ST[v, T[t-1]]
         for h in H_M
         for v in V[h]
-        for i in L
         for t in range(1, len(T[1:]) + 1)
         for d in D_t[T[t]] if d in D_B
         for s in S),
         name="ST_charter_transition_upper"
     )
     model.addConstrs(
-        (r_END[v, i, d, s] <= 1 - alpha_ST[v, T[t]]
+        (gp.quicksum(r_END[v, i, d, s] for i in L) <= 1 - alpha_ST[v, T[t]]
         for h in H_M
         for v in V[h]
-        for i in L
         for t in range(1, len(T[1:]) + 1)
         for d in D_t[T[t]] if d in D_B
         for s in S),
@@ -353,10 +349,9 @@ def model(
         for s in S)
     )
     model.addConstrs(
-        (r_START[v, i, d, s] + r_END[v, i, d, s] == 0
+        (gp.quicksum(r_START[v, i, d, s] + r_END[v, i, d, s] for i in W) == 0
         for h in H_M
         for v in V[h]
-        for i in W
         for d in D_B
         for s in S)
     )
@@ -381,9 +376,12 @@ def real_model(
     
     # Generatue failures
     F = failures(scenarios, wind_farms, maintenance_categories)
+    
+    base = Base("Base A",  coordinates=(53.7, 7.4))
+    L_RT = {(h.name, i.name): 0 if h.multiday else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
 
     # Generate patterns
-    K, L, P = generate_patterns(vessel_types, maintenance_categories)
+    K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, 360, scenarios, L_RT, A)
 
     return model(
         name,
@@ -392,11 +390,10 @@ def real_model(
         days_per_month=config.DAYS,
         months=config.MONTHS,
         maintenance_categories=maintenance_categories,
-        pattern_indexes_for_v=K,
+        pattern_indexes_for_hids=K_hids,
         scenarios=scenarios,
         failures=F,
         patterns=P,
-        pattern_lengths=L,
         weather_windows=A
     )
 

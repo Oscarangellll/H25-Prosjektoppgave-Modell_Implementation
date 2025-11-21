@@ -8,6 +8,7 @@ from failure_generation import failures
 from weather_windows import find_weather_windows
 import numpy as np
 import config
+from haversine import haversine, Unit
 
 name = "Two Stage Test Model"
 vessel_types = [
@@ -39,6 +40,7 @@ wind_farms = [
 base = Base("Base A",  coordinates=(53.7, 7.4))
 days_per_month = 30
 months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+ndays_in_year = days_per_month * len(months)
 #create list of scenarios with n random numbers
 num_s = 1
 np.random.seed(config.RANDOM_SEED)
@@ -46,12 +48,16 @@ scenarios = [np.random.randint(1, 101) for _ in range(num_s)]
 print("Scenarios:", scenarios)
 failures = failures(scenarios=scenarios, wind_farms=wind_farms, maintenance_categories=maintenance_categories)
 #lager patterns for et eller annet øvre vindu (må være større enn høyeste max shift length)
-K, L, P = generate_patterns(vessel_types=vessel_types, maintenance_categories=maintenance_categories) 
+
+L_RT = {(h.name, i.name): 0 if h.multiday else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
+
 weather_windows = find_weather_windows(scenarios=scenarios, wind_farms=wind_farms, vessel_types=vessel_types)
-# Definere en K_hid 
-# For hver h, i, d: hvis pattern k fra K er feasible, legge inn i K_hid
-# For hver h, i, d: sammenlikn alle par av patterns i K_hid, og fjern de som er dominated
-# Nå kan vi lage lambda variablene basert på K_hid og droppe feasibility sjekken i modellen (tror jeg)
+
+L_RT = {(h.name, i.name): 0 if h.multiday else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
+
+# Generate patterns
+K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, 360, scenarios, L_RT, weather_windows)
+
 downtime_cost_per_day = 6000
 
 model = model(
@@ -63,11 +69,11 @@ model = model(
     days_per_month,
     months,
     maintenance_categories,
-    K,
+    K_hids,
     scenarios,
     failures,
     P,
-    L,
+    L_RT,
     weather_windows,
     downtime_cost_per_day
 )
