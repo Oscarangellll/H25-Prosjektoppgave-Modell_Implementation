@@ -8,6 +8,7 @@ from model import model
 from generate_patterns import generate_patterns
 from failure_generation import failures
 from weather_windows import find_weather_windows
+from haversine import haversine, Unit
 
 from classes import MaintenanceCategory, Vessel, VesselType, WindFarm, Base
 from calculate_downtime_cost import calculate_downtime_cost
@@ -33,21 +34,20 @@ maintenance_categories = [
 ]
 wind_farms = [
     WindFarm("Wind Farm A", coordinates=(54.0, 7.3), n_turbines=100, weather_data_file="Location 1.csv", turbine_model="Nordex_N90_2500"),
-    # WindFarm("Wind Farm B", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
+    WindFarm("Wind Farm B", coordinates=(54.0, 7.3), n_turbines=100, weather_data_file="Location 1.csv", turbine_model="Nordex_N90_2500")
     # WindFarm("Wind Farm C", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
     # WindFarm("Wind Farm D", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
     # WindFarm("Wind Farm E", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
-
 ]
 base = Base("Base A",  coordinates=(53.7, 7.4))
 days_per_month = 30
 months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 ndays_in_year = days_per_month * len(months)
 #create list of scenarios with n random numbers
-num_s = 1
+num_s = 2
 np.random.seed(config.RANDOM_SEED)
 scenarios = [np.random.randint(1, 101) for _ in range(num_s)]
-print("Scenarios:", scenarios)
+print(scenarios)
 failures = failures(scenarios=scenarios, wind_farms=wind_farms, maintenance_categories=maintenance_categories)
 #lager patterns for et eller annet øvre vindu (må være større enn høyeste max shift length)
 
@@ -55,10 +55,8 @@ L_RT = {(h.name, i.name): 0 if h.multiday else 2 * haversine(i.coordinates, base
 
 weather_windows = find_weather_windows(scenarios=scenarios, wind_farms=wind_farms, vessel_types=vessel_types)
 
-# Definere en K_hid 
-# For hver h, i, d: hvis pattern k fra K er feasible, legge inn i K_hid
-# For hver h, i, d: sammenlikn alle par av patterns i K_hid, og fjern de som er dominated
-# Nå kan vi lage lambda variablene basert på K_hid og droppe feasibility sjekken i modellen (tror jeg)
+K, L, K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, days=360, scenarios=scenarios, L_RT=L_RT, weather_windows=weather_windows,)
+
 downtime_cost = calculate_downtime_cost(wind_farms, scenarios, 0.1)
 model = model(
     name, 
@@ -73,11 +71,10 @@ model = model(
     scenarios,
     failures,
     P,
-    L_RT,
     weather_windows,
     downtime_cost
 )
-model.Params.Presolve = 0
+
 model.optimize()
 print("Objective value:", model.ObjVal)
 

@@ -6,6 +6,7 @@ from classes import Vessel, VesselType, WindFarm, MaintenanceCategory, Base
 from weather_windows import find_weather_windows
 from failure_generation import failures
 from generate_patterns import generate_patterns
+from calculate_downtime_cost import calculate_downtime_cost
 import config
 
 def model(
@@ -17,11 +18,10 @@ def model(
     days_per_month: int,
     months: list[str],
     maintenance_categories: list[MaintenanceCategory],
-    pattern_indexes_for_hids: dict[str, list[int]],
+    pattern_indexes_for_hids: dict[tuple[str, str, int, int], int],
     scenarios: list[int],
     failures: dict[tuple[str, str, int, int], int],
     patterns: dict[tuple[str, int], int],
-    pattern_lengths: dict[int, int],
     weather_windows: dict[tuple[str, str, int, int], int],
     downtime_cost: dict[tuple[str, int, int]],
 ):
@@ -80,6 +80,7 @@ def model(
     # Second stage
     x = model.addVars(H, W, D, S, vtype=gp.GRB.INTEGER, name="x")
     lmbd = model.addVars(
+        
         ((h, i, d, k, s) for h in H for i in W for d in D for s in S for k in K[h, i, d, s]),
         vtype=gp.GRB.INTEGER,
         name="lambda"
@@ -361,12 +362,18 @@ def model(
 def real_model(
     name,
     vessel_types,
+    vessels,
     wind_farms,
     maintenance_categories,
-    num_scenarios
+    num_scenarios,
+    days,
+    months,
+    n_total_days,
+    seed
 ):
     
-    random.seed(config.SEED)
+    # random.seed(config.RANDOM_SEED)'
+    random.seed(seed)
     scenarios = random.sample(
         range(1, config.SCENARIOS + 1), num_scenarios
     )
@@ -378,23 +385,27 @@ def real_model(
     F = failures(scenarios, wind_farms, maintenance_categories)
     
     base = Base("Base A",  coordinates=(53.7, 7.4))
-    L_RT = {(h.name, i.name): 0 if h.multiday else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
-
+    
     # Generate patterns
-    K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, 360, scenarios, L_RT, A)
+    K, L, K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, n_total_days, scenarios, A, base)
+    
+    downtime_cost = calculate_downtime_cost(wind_farms, scenarios, 0.1)
 
     return model(
         name,
         vessel_types,
+        vessels,
         wind_farms,
-        days_per_month=config.DAYS,
-        months=config.MONTHS,
+        base,
+        days_per_month=days,
+        months=months,
         maintenance_categories=maintenance_categories,
         pattern_indexes_for_hids=K_hids,
         scenarios=scenarios,
         failures=F,
         patterns=P,
-        weather_windows=A
+        weather_windows=A,
+        downtime_cost=downtime_cost
     )
 
 # #Test case
