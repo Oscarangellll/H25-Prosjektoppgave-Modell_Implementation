@@ -23,7 +23,7 @@ def model(
     patterns: dict[tuple[str, int], int],
     pattern_lengths: dict[int, int],
     weather_windows: dict[tuple[str, str, int, int], int],
-    downtime_cost_per_day: int=9100,
+    downtime_cost: dict[tuple[str, int, int]],
 ):
     model = gp.Model(name)
     
@@ -56,7 +56,7 @@ def model(
     # L_k = pattern_lengths
     # L_RT = {(h.name, i.name): 0 if h.name in H_M else 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) / h.speed for i in wind_farms for h in vessel_types}
     A = weather_windows
-    C_D = {(i, d, s): downtime_cost_per_day for i in W for d in D for s in S}
+    C_D = downtime_cost
     C_U = {(h.name): h.usage_cost_per_day for h in vessel_types}
     C_RT = {(h.name, i.name): 2 * haversine(i.coordinates, base.coordinates, unit=Unit.KILOMETERS) * h.cost_per_km for h in vessel_types if h.name in H_S for i in wind_farms}
     C_T = {(h.name, i.name, j.name): haversine(i.coordinates, j.coordinates, unit=Unit.KILOMETERS) * h.cost_per_km for h in vessel_types if h.name in H_M for i in wind_farms + [base] for j in wind_farms + [base] if i!= j}
