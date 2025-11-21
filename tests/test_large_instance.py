@@ -1,13 +1,15 @@
 import sys
 import os
+import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from classes import MaintenanceCategory, Vessel, VesselType, WindFarm, Base
+
+import config
 from model import model
 from generate_patterns import generate_patterns
 from failure_generation import failures
 from weather_windows import find_weather_windows
-import numpy as np
-import config
+from classes import MaintenanceCategory, Vessel, VesselType, WindFarm, Base
+from calculate_downtime_cost import calculate_downtime_cost
 
 name = "Two Stage Test Model"
 vessel_types = [
@@ -29,7 +31,7 @@ maintenance_categories = [
     MaintenanceCategory("Severe Repair", failure_rate=0.12, duration=8.66, vessel_types=["CTV", "SOV"]),
 ]
 wind_farms = [
-    WindFarm("Wind Farm A", coordinates=(54.0, 7.3), n_turbines=100, weather_data_file="Location 1.csv"),
+    WindFarm("Wind Farm A", coordinates=(54.0, 7.3), n_turbines=100, weather_data_file="Location 1.csv", turbine_model="Nordex_N90_2500"),
     # WindFarm("Wind Farm B", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
     # WindFarm("Wind Farm C", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
     # WindFarm("Wind Farm D", coordinates=(54.0, 7.3), n_turbines=50, weather_data_file="Location 1.csv"),
@@ -52,8 +54,7 @@ weather_windows = find_weather_windows(scenarios=scenarios, wind_farms=wind_farm
 # For hver h, i, d: hvis pattern k fra K er feasible, legge inn i K_hid
 # For hver h, i, d: sammenlikn alle par av patterns i K_hid, og fjern de som er dominated
 # Nå kan vi lage lambda variablene basert på K_hid og droppe feasibility sjekken i modellen (tror jeg)
-downtime_cost_per_day = 6000
-
+downtime_cost = calculate_downtime_cost(wind_farms, scenarios, 0.1)
 model = model(
     name, 
     vessel_types,
@@ -69,9 +70,9 @@ model = model(
     P,
     L,
     weather_windows,
-    downtime_cost_per_day
+    downtime_cost
 )
-
+model.Params.Presolve = 0
 model.optimize()
 print("Objective value:", model.ObjVal)
 
