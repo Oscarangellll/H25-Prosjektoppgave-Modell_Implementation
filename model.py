@@ -366,30 +366,34 @@ def real_model(
     wind_farms,
     maintenance_categories,
     num_scenarios,
+    scenario,
     days,
     months,
     n_total_days,
     seed
 ):
     
-    # random.seed(config.RANDOM_SEED)'
-    random.seed(seed)
-    scenarios = random.sample(
-        range(1, config.SCENARIOS + 1), num_scenarios
-    )
+    # random.seed(config.RANDOM_SEED)
+    if scenario:
+        scenarios = random.sample(range(101, 1001), 1)
+    else:
+        random.seed(seed)
+        scenarios = random.sample(
+            range(1, 101), num_scenarios
+        )
 
     # Generate weather window
     A = find_weather_windows(scenarios, wind_farms, vessel_types)
     
     # Generatue failures
-    F = failures(scenarios, wind_farms, maintenance_categories)
+    F = failures(scenarios, wind_farms, maintenance_categories, seed)
     
     base = Base("Base A",  coordinates=(53.7, 7.4))
     
     # Generate patterns
     K, L, K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, n_total_days, scenarios, A, base)
     
-    downtime_cost = calculate_downtime_cost(wind_farms, scenarios, 0.1)
+    downtime_cost = calculate_downtime_cost(wind_farms, scenarios, 0.17)
 
     return model(
         name,

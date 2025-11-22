@@ -3,14 +3,14 @@ from classes import WindFarm
 from classes import MaintenanceCategory
 import config
 
-def failures(scenarios, wind_farms, maintenance_categories):
+def failures(scenarios, wind_farms, maintenance_categories, seed):
     """
     Returns
     -------
     F : dict
         (wind farm, task, day, scenario): number of failures
     """
-    np.random.seed(config.RANDOM_SEED)
+    np.random.seed(seed)
     p = [m.failure_rate / 365 for m in maintenance_categories]
 
     if sum(p) > 1.0:

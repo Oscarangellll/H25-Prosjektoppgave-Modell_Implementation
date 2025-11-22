@@ -2,7 +2,7 @@ HOURS = 24
 DAYS = 30
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] 
 
-SCENARIOS = 100
+SCENARIOS = 1000
 RANDOM_SEED = 23
 
 WEATHER_DATA_FOLDER = "Weather Data"

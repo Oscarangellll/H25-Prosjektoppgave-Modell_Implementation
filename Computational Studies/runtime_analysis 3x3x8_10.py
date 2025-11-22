@@ -1,8 +1,12 @@
 from make_case import make_case
+import gurobipy as gp
+
+#3x3x8-10
+
 starting_seed = 50
-vessels = range(2, 3) #runs for n_vessels = 3
-wind_farms = range(1, 2) #runs for n_wind_farms = 1
-scenarios = range(1, 2) #runs for n_scenarios = 1
+vessels = range(3, 4) #runs for n_vessels = 3
+wind_farms = range(3, 4) #runs for n_wind_farms = 3
+scenarios = range(8, 11) #runs for n_scenarios = 8, 9, ..., 10
 running_instances = 5 #number of instances per VxWxS combination
 
 runtime_results = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
@@ -19,14 +23,15 @@ for n_vessels in vessels:
                     n_vessels,
                     n_wind_farms,
                     n_scenarios,
-                    seed
+                    seed,
+                    False
                     )
                 
                 print(f"Optimizing model for VxWxS = {n_vessels}x{n_wind_farms}x{n_scenarios}, instance {running_instance} with seed {seed}")
                 
                 #set model params
                 model.Params.MIPGap = 0.002 #set gap to 0.2%
-                model.Params.TimeLimit = 300 #set max solving time to 5 minutes
+                model.Params.TimeLimit = 7200 #set max solving time to 5 minutes
                 model.Params.OutputFlag = 0 #turn off output
                 
                 model.optimize()
@@ -49,7 +54,7 @@ for n_vessels in vessels:
         
 # write results to csv file
 import csv
-with open("runtime_analysis_results.csv", mode="w", newline="") as file:
+with open("runtime_analysis_results 3x3x8_10.csv", mode="w", newline="") as file:
     writer = csv.writer(file)
     writer.writerow(["n_vessels", "n_wind_farms", "n_scenarios", "instance", "runtime", "objval", "charter_decision"])
     for key in runtime_results.keys():
