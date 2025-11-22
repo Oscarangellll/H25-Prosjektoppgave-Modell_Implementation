@@ -65,8 +65,8 @@ def model(
 
     ### Variables
     # First stage
-    gamma_ST = model.addVars(H, T, vtype=gp.GRB.INTEGER, name="gamma_ST")
-    gamma_LT = model.addVars(H, vtype=gp.GRB.INTEGER, name="gamma_LT")
+    gamma_ST = model.addVars(H, T, vtype=gp.GRB.INTEGER, ub=10, name="gamma_ST")
+    gamma_LT = model.addVars(H, vtype=gp.GRB.INTEGER, ub= 10, name="gamma_LT")
     alpha_ST = model.addVars(
         ((v, t) for h in H_M for v in V[h] for t in T),
         vtype=gp.GRB.BINARY,

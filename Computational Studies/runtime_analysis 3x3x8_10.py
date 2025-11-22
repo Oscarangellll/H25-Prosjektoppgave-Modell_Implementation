@@ -12,6 +12,7 @@ running_instances = 5 #number of instances per VxWxS combination
 runtime_results = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
 objval_results = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
 charter_decisions = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
+solution_gaps = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
 
 for n_vessels in vessels:
     for n_wind_farms in wind_farms:
@@ -31,7 +32,7 @@ for n_vessels in vessels:
                 
                 #set model params
                 model.Params.MIPGap = 0.002 #set gap to 0.2%
-                model.Params.TimeLimit = 7200 #set max solving time to 5 minutes
+                model.Params.TimeLimit = 10 #set max solving time to 5 minutes
                 model.Params.OutputFlag = 0 #turn off output
                 
                 model.optimize()
@@ -42,12 +43,19 @@ for n_vessels in vessels:
                 total_cost = model.ObjVal
                 objval_results[(n_vessels, n_wind_farms, n_scenarios)].append(total_cost)
                 chartered_vessels = []
-                for v in model.getVars():
-                    if v.X > 0:
-                        if "gamma" in v.VarName:
-                            chartered_vessels.append(f"{v.VarName}: {v.X}")
-                charter_decisions[(n_vessels, n_wind_farms, n_scenarios)].append(chartered_vessels)                
-                            
+                if model.SolCount >= 1: #check if feasible solution found before assessing solution variables
+                    gap = model.MIPGap
+                    solution_gaps[(n_vessels, n_wind_farms, n_scenarios)].append(gap)
+                    print("Feasible solution found. Retrieving charter decisions...")
+                    for v in model.getVars():
+                        if v.X > 0:
+                            if "gamma" in v.VarName:
+                                chartered_vessels.append(f"{v.VarName}: {v.X}")
+                else:
+                    print(f"No feasible solution found in instance {running_instance} for VxWxS = {n_vessels}x{n_wind_farms}x{n_scenarios}")
+                    solution_gaps[(n_vessels, n_wind_farms, n_scenarios)].append(None)
+                charter_decisions[(n_vessels, n_wind_farms, n_scenarios)].append(chartered_vessels)
+                
                 seed += 1
             n_scenarios += 1
         n_wind_farms += 1
@@ -56,11 +64,12 @@ for n_vessels in vessels:
 import csv
 with open("runtime_analysis_results 3x3x8_10.csv", mode="w", newline="") as file:
     writer = csv.writer(file)
-    writer.writerow(["n_vessels", "n_wind_farms", "n_scenarios", "instance", "runtime", "objval", "charter_decision"])
+    writer.writerow(["n_vessels", "n_wind_farms", "n_scenarios", "instance", "runtime", "objval", "solution_gap", "charter_decision"])
     for key in runtime_results.keys():
         for instance_index in range(running_instances):
             n_vessels, n_wind_farms, n_scenarios = key
             runtime = runtime_results[key][instance_index]
             objval = objval_results[key][instance_index]
             charter = charter_decisions[key][instance_index]
-            writer.writerow([n_vessels, n_wind_farms, n_scenarios, instance_index + 1, runtime, objval, charter])
+            gap = solution_gaps[key][instance_index]
+            writer.writerow([n_vessels, n_wind_farms, n_scenarios, instance_index + 1, runtime, objval, gap, charter])
