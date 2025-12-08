@@ -26,9 +26,9 @@ def make_case(name, n_vessels, n_wind_farms, n_scenarios, seed, scenario):
     ]
     vessels = vessels[:n_vessels]
     wind_farms = [
-        WindFarm("Wind Farm A", coordinates=(54.0, 7.3), n_turbines=100, weather_data_file="Location 2.csv", turbine_model="DTU"),
-        WindFarm("Wind Farm B", coordinates=(53.94, 6.6), n_turbines=80, weather_data_file="Location 2.csv", turbine_model="DTU"),
-        WindFarm("Wind Farm C", coordinates=(54.4, 7.9), n_turbines=70, weather_data_file="Location 2.csv", turbine_model="DTU"),
+        WindFarm("Wind Farm A", coordinates=(54.0, 7.3), n_turbines=100, weather_data_file="Location 2.csv", turbine_model="Nordex_N90_2500"),
+        WindFarm("Wind Farm B", coordinates=(53.94, 6.6), n_turbines=80, weather_data_file="Location 2.csv", turbine_model="Nordex_N90_2500"),
+        WindFarm("Wind Farm C", coordinates=(54.4, 7.9), n_turbines=70, weather_data_file="Location 2.csv", turbine_model="Nordex_N90_2500"),
     ]
     wind_farms = wind_farms[:n_wind_farms]
     maintenance_categories = [

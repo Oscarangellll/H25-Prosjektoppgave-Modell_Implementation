@@ -6,8 +6,8 @@ import gurobipy as gp
 starting_seed = 50
 vessels = range(2, 3) #runs for n_vessels = 2
 wind_farms = range(1, 2) #runs for n_wind_farms = 1
-scenarios = range(1, 2) #runs for n_scenarios = 1, 2, ..., 10
-running_instances = 1 #number of instances per VxWxS combination
+scenarios = range(1, 11) #runs for n_scenarios = 1, 2, ..., 10
+running_instances = 5 #number of instances per VxWxS combination
 
 runtime_results = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
 objval_results = {(v, w, s): [] for v in vessels for w in wind_farms for s in scenarios}
