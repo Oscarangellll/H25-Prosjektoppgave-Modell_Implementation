@@ -101,11 +101,11 @@ def remove_dominated_patterns(vessel_types, wind_farms, days, scenarios, K_hids,
 # print(L_RT)
 # days = 1
 # weather_windows = {
-#     ("CTV", "Wind Farm A", 1, 1): 8
+#     ("CTV", "Wind Farm A", 1, 1): 6
 # }
 # #find_weather_windows(scenarios=scenarios, wind_farms=wind_farms, vessel_types=vessel_types)
 
-# K, L, K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, days, scenarios, L_RT, weather_windows,)
+# K, L, K_hids, P = generate_patterns(vessel_types, maintenance_categories, wind_farms, days, scenarios, weather_windows, base)
 # print("Kv:", K)
 # print(" ")
 # print("Lk:", L)

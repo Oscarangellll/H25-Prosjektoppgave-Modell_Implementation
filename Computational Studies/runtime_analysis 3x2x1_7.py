@@ -32,7 +32,7 @@ for n_vessels in vessels:
                 
                 #set model params
                 model.Params.MIPGap = 0.002 #set gap to 0.2%
-                model.Params.TimeLimit = 10 #set max solving time to 5 minutes
+                model.Params.TimeLimit = 7200 #set max solving time to 2 hours
                 model.Params.OutputFlag = 0 #turn off output
                 
                 model.optimize()

@@ -65,17 +65,17 @@ def model(
 
     ### Variables
     # First stage
-    gamma_ST = model.addVars(H, T, vtype=gp.GRB.INTEGER, ub=10, name="gamma_ST")
-    gamma_LT = model.addVars(H, vtype=gp.GRB.INTEGER, ub= 10, name="gamma_LT")
+    gamma_ST = model.addVars(H, T, vtype=gp.GRB.INTEGER, ub=5, name="gamma_ST")
+    gamma_LT = model.addVars(H, vtype=gp.GRB.INTEGER, ub= 5, name="gamma_LT")
     alpha_ST = model.addVars(
         ((v, t) for h in H_M for v in V[h] for t in T),
         vtype=gp.GRB.BINARY,
-        name="alpha"
+        name="alpha_ST"
     )
     alpha_LT = model.addVars(
         (v for h in H_M for v in V[h]),
         vtype=gp.GRB.BINARY,
-        name="alpha"
+        name="alpha_LT"
     )
     # Second stage
     x = model.addVars(H, W, D, S, vtype=gp.GRB.INTEGER, name="x")
@@ -375,7 +375,7 @@ def real_model(
     
     # random.seed(config.RANDOM_SEED)
     if scenario:
-        scenarios = random.sample(range(101, 1001), 1)
+        scenarios = seed
     else:
         random.seed(seed)
         scenarios = random.sample(
