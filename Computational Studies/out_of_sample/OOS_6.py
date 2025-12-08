@@ -34,7 +34,7 @@ for solution in solutions:
             var.setAttr("lb", float(value))
         model.Params.MIPGap = 0.002 #set gap to 0.2%
         model.Params.TimeLimit = 7200 #set max solving time to 2 hours
-        model.Params.OutputFlag = 1 #turn off output
+        model.Params.OutputFlag = 0 #turn off output
         model.update()    
         model.optimize()
         results.append(model.ObjVal)
