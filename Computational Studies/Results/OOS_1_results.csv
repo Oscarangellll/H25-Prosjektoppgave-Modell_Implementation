@@ -1,0 +1,4 @@
+Solution,Average Objective Value
+"['gamma_LT[CTV]: 1.0', 'gamma_LT[SOV]: 1.0']",13428370.922167268
+"['gamma_ST[CTV,December]: 1.0', 'gamma_LT[CTV]: 1.0', 'gamma_LT[SOV]: 1.0']",13491989.55595761
+"['gamma_ST[CTV,January]: 2.0', 'gamma_LT[CTV]: 1.0', 'gamma_LT[SOV]: 1.0']",13622001.677438546
